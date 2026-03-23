@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bank_account_postgres
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+    ports:
+      - "${DB_EXTERNAL_PORT}:${DB_INTERNAL_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - bank_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: bank_account_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "${PGADMIN_EXTERNAL_PORT}:${PGADMIN_INTERNAL_PORT}"
+    depends_on:
+      - postgres
+    networks:
+      - bank_network
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  api:
+    build: .
+    container_name: bank_account_api
+    environment:
+      DB_HOST: postgres
+      DB_PORT: ${DB_INTERNAL_PORT}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      NODE_ENV: ${NODE_ENV}
+      API_PORT: ${API_INTERNAL_PORT}
+    ports:
+      - "${API_EXTERNAL_PORT}:${API_INTERNAL_PORT}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bank_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  bank_network:
+    driver: bridge
