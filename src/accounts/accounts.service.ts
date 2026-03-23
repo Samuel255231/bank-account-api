@@ -1,27 +1,117 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Account } from './entities/account.entity';
 import { CheckBalanceDto } from './dto/check-balance.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
+
+// Interface pour le compte
+interface DummyAccount {
+  id: number;
+  accountNumber: string;
+  bankCode: string;
+  balance: number;
+  accountHolder: string;
+}
 
 @Injectable()
 export class AccountsService {
   private readonly logger = new Logger(AccountsService.name);
+  private dummyAccounts: DummyAccount[] = [];
 
-  constructor(
-    @InjectRepository(Account)
-    private accountRepository: Repository<Account>,
-  ) {}
+  constructor() {
+    // Initialiser les données factices
+    this.initializeDummyData();
+  }
 
+  /**
+   * Initialise les données factices avec les comptes de démonstration
+   */
+  private initializeDummyData() {
+    this.dummyAccounts = [
+      {
+        id: 1,
+        accountNumber: 'FR76123456789',
+        bankCode: '30001',
+        balance: 1500.50,
+        accountHolder: 'Jean Dupont'
+      },
+      {
+        id: 2,
+        accountNumber: 'FR76987654321',
+        bankCode: '30002',
+        balance: 2500.00,
+        accountHolder: 'Marie Martin'
+      },
+      {
+        id: 3,
+        accountNumber: 'FR76456789123',
+        bankCode: '30003',
+        balance: 500.75,
+        accountHolder: 'Pierre Durand'
+      },
+      {
+        id: 4,
+        accountNumber: 'FR76321987654',
+        bankCode: '30001',
+        balance: 10000.00,
+        accountHolder: 'Sophie Bernard'
+      },
+      {
+        id: 5,
+        accountNumber: 'FR76876543210',
+        bankCode: '30002',
+        balance: 75.20,
+        accountHolder: 'Lucas Petit'
+      },
+      {
+        id: 6,
+        accountNumber: 'MG76123456789',
+        bankCode: '30001',
+        balance: 1500.50,
+        accountHolder: 'Jean Dupont'
+      },
+      {
+        id: 7,
+        accountNumber: 'MG76987654321',
+        bankCode: '30002',
+        balance: 2500.00,
+        accountHolder: 'Marie Martin'
+      },
+      {
+        id: 8,
+        accountNumber: 'MG76456789123',
+        bankCode: '30003',
+        balance: 500.75,
+        accountHolder: 'Pierre Durand'
+      },
+      {
+        id: 9,
+        accountNumber: 'MG76321987654',
+        bankCode: '30001',
+        balance: 10000.00,
+        accountHolder: 'Sophie Bernard'
+      },
+      {
+        id: 10,
+        accountNumber: 'MG76876543210',
+        bankCode: '30002',
+        balance: 75.20,
+        accountHolder: 'Lucas Petit'
+      }
+    ];
+
+    this.logger.log(`Données factices initialisées avec ${this.dummyAccounts.length} comptes`);
+  }
+
+  /**
+   * Vérifier le solde d'un compte
+   */
   async checkBalance(checkBalanceDto: CheckBalanceDto): Promise<{ balance: number; message: string }> {
     const { accountNumber, bankCode } = checkBalanceDto;
     
     this.logger.log(`Vérification du solde pour le compte: ${accountNumber} (${bankCode})`);
     
-    const account = await this.findAccount(accountNumber, bankCode);
+    const account = this.findAccount(accountNumber, bankCode);
     
-    this.logger.log(`Solde trouvé: ${account.balance}€ pour le compte ${accountNumber}`);
+    this.logger.log(`Solde trouvé: ${account.balance} MGA pour le compte ${accountNumber}`);
     
     return {
       balance: account.balance,
@@ -29,15 +119,18 @@ export class AccountsService {
     };
   }
 
+  /**
+   * Effectuer un retrait
+   */
   async withdraw(withdrawDto: WithdrawDto): Promise<{ message: string; newBalance?: number }> {
     const { accountNumber, bankCode, amount } = withdrawDto;
     
-    this.logger.log(`Tentative de retrait de ${amount}€ pour le compte: ${accountNumber} (${bankCode})`);
+    this.logger.log(`Tentative de retrait de ${amount} MGA pour le compte: ${accountNumber} (${bankCode})`);
     
-    const account = await this.findAccount(accountNumber, bankCode);
+    const account = this.findAccount(accountNumber, bankCode);
     
     if (account.balance < amount) {
-      this.logger.warn(`Retrait refusé - Solde insuffisant: ${account.balance}€ < ${amount}€ pour le compte ${accountNumber}`);
+      this.logger.warn(`Retrait refusé - Solde insuffisant: ${account.balance} MGA < ${amount} MGA pour le compte ${accountNumber}`);
       return {
         message: 'votre solde est insuffisant',
       };
@@ -45,9 +138,8 @@ export class AccountsService {
     
     // Effectuer le retrait
     account.balance -= amount;
-    await this.accountRepository.save(account);
     
-    this.logger.log(`Retrait effectué avec succès. Nouveau solde: ${account.balance}€ pour le compte ${accountNumber}`);
+    this.logger.log(`Retrait effectué avec succès. Nouveau solde: ${account.balance} MGA pour le compte ${accountNumber}`);
     
     return {
       message: 'retrait effectué avec succés',
@@ -55,13 +147,13 @@ export class AccountsService {
     };
   }
 
-  private async findAccount(accountNumber: string, bankCode: string): Promise<Account> {
-    const account = await this.accountRepository.findOne({
-      where: {
-        accountNumber,
-        bankCode,
-      },
-    });
+  /**
+   * Rechercher un compte par numéro et code bancaire
+   */
+  private findAccount(accountNumber: string, bankCode: string): DummyAccount {
+    const account = this.dummyAccounts.find(
+      acc => acc.accountNumber === accountNumber && acc.bankCode === bankCode
+    );
     
     if (!account) {
       this.logger.error(`Compte non trouvé: ${accountNumber} (${bankCode})`);
@@ -69,5 +161,27 @@ export class AccountsService {
     }
     
     return account;
+  }
+
+  /**
+   * Méthode utilitaire pour obtenir tous les comptes (optionnel)
+   */
+  getAllAccounts(): DummyAccount[] {
+    return [...this.dummyAccounts];
+  }
+
+  /**
+   * Méthode utilitaire pour obtenir un compte par ID (optionnel)
+   */
+  getAccountById(id: number): DummyAccount | undefined {
+    return this.dummyAccounts.find(acc => acc.id === id);
+  }
+
+  /**
+   * Méthode utilitaire pour réinitialiser les données (optionnel)
+   */
+  resetDummyData(): void {
+    this.initializeDummyData();
+    this.logger.log('Données factices réinitialisées');
   }
 }
